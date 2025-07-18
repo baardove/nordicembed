@@ -1,0 +1,29 @@
+{
+  "factory_llm_infos": [
+    {
+      "name": "NorwegianEmbeddings",
+      "tags": "EMBEDDING",
+      "status": "1",
+      "llm": [
+        {
+          "llm_name": "norbert2-embed@local",
+          "tags": "EMBEDDING",
+          "model_type": "embedding",
+          "base_url": "http://host.docker.internal:6000/embed"
+        },
+        {
+          "llm_name": "simcse-nb-bert-embed@local",
+          "tags": "EMBEDDING",
+          "model_type": "embedding",
+          "base_url": "http://host.docker.internal:6000/embed"
+        },
+        {
+          "llm_name": "norbert3-base-embed@local",
+          "tags": "EMBEDDING",
+          "model_type": "embedding",
+          "base_url": "http://host.docker.internal:6000/embed"
+        }
+      ]
+    }
+  ]
+}

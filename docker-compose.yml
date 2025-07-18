@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  embed-norwegian:
+    build: .
+    image: embed-norwegian:latest
+    container_name: norwegian-embeddings
+    ports:
+      - "7000:7000"
+    environment:
+      - MODEL_NAME=${MODEL_NAME:-norbert2}
+      - MODEL_PATH=/app/models
+      - HOST=0.0.0.0
+      - PORT=7000
+      - DEVICE=${DEVICE:-cpu}
+      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-32}
+      - MAX_LENGTH=${MAX_LENGTH:-512}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  dashboard:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dashboard
+    image: embed-dashboard:latest
+    container_name: norwegian-embeddings-dashboard
+    ports:
+      - "8080:8080"
+    depends_on:
+      - embed-norwegian
+    environment:
+      - API_URL=http://embed-norwegian:7000
+    restart: unless-stopped
