@@ -629,6 +629,7 @@ See [ragflow_config_guide.md](ragflow_config_guide.md) for complete RAGFlow conf
 
 **Error "102"?** You're trying to use a reranking model as an embedding model. See the [configuration guide](ragflow_config_guide.md).
 
+
 ## Development
 
 ### Local Development
@@ -663,6 +664,7 @@ docker build -t embed-nordic .
 - **Batch Processing**: Send multiple texts in one request (up to MAX_BATCH_SIZE)
 - **Model Selection**: Use `norbert3-base` for faster inference
 
+
 ## Troubleshooting
 
 ### Service won't start
@@ -680,11 +682,49 @@ docker build -t embed-nordic .
 - Reduce `MAX_LENGTH`
 - Use batch requests
 
+
 ## License
 
 This project is licensed under the MIT License.
 
+
 ## Acknowledgments
 
-- [NorBERT models](https://github.com/ltgoslo/norbert2) by Language Technology Group, University of Oslo
-- [SimCSE-NB-BERT](https://huggingface.co/FFI/SimCSE-NB-BERT-large) by FFI
+We would like to thank the following organizations and researchers for their contributions to the Nordic NLP community by developing and open-sourcing these models:
+
+### Norwegian Language Models
+- **[Language Technology Group, University of Oslo](https://www.mn.uio.no/ifi/english/research/groups/ltg/)** - For developing the NorBERT family of models (NorBERT 2, NorBERT 3 base/large) and ELECTRA-small-nordic
+- **[National Library of Norway AI Lab (NbAiLab)](https://github.com/NBAiLab)** - For developing nb-bert-base, nb-bert-large, and sentence-bert-base models
+- **[Norwegian Defence Research Establishment (FFI)](https://www.ffi.no/)** - For developing SimCSE-NB-BERT-large
+
+### Swedish Language Models
+- **[National Library of Sweden (KB)](https://www.kb.se/)** - For developing KB-BERT and KB-SBERT Swedish models
+- **[KBLab](https://github.com/Kungbib/swedish-bert-models)** - For developing Swedish BERT and ALBERT models
+- **[AI-Nordics](https://github.com/AI-Nordics)** - For developing bert-large-swedish-cased
+
+### Danish Language Models
+- **[BotXO](https://www.botxo.ai/)** - For developing Danish BERT (DaBERT)
+- **[Malte Højmark-Bertelsen](https://github.com/MalteHB)** - For developing Ælæctra Danish and ELECTRA-base-danish models
+- **[Alexandra Institute (DaNLP)](https://github.com/alexandrainst/danlp)** - For developing da-bert-ner
+
+### Finnish Language Models
+- **[TurkuNLP Group, University of Turku](https://turkunlp.org/)** - For developing the FinBERT family of models (base, large, and sentence embeddings)
+
+### Icelandic Language Model
+- **[Miðeind ehf.](https://mideind.is/)** - For developing IceBERT
+
+### Multilingual Models
+- **[Facebook AI Research](https://ai.facebook.com/)** - For developing XLM-RoBERTa
+- **[Microsoft](https://www.microsoft.com/)** - For developing the multilingual E5 model
+- **[Sentence Transformers](https://www.sbert.net/)** - For developing paraphrase-multilingual-MiniLM
+
+### Cross-Encoder Reranking Models
+- **[UKP Lab, TU Darmstadt](https://www.ukp.tu-darmstadt.de/)** - For developing the MS-MARCO and multilingual MS-MARCO cross-encoders
+- **[Jina AI](https://jina.ai/)** - For developing the Jina reranker v2 multilingual model
+
+### Special Thanks
+- The **[Hugging Face](https://huggingface.co/)** community for hosting these models and providing the transformers library
+- All researchers and contributors who have worked on Nordic language NLP
+- The open-source community for continuous improvements and feedback
+
+These models represent years of research and development in Nordic language processing, and we are grateful for the opportunity to integrate them into a unified service.
