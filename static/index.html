@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Norwegian Embeddings Dashboard</title>
+    <title>Nordic Embeddings Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="alternate icon" href="/static/favicon.ico">
     <style>
         * {
             margin: 0;
@@ -430,13 +432,171 @@
         .speed-fast { width: 90%; }
         .speed-medium { width: 60%; background-color: #ff9800; }
         .speed-slow { width: 30%; background-color: #f44336; }
+        
+        .model-link {
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        
+        .model-link:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        
+        .model-link-icon {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-left: 4px;
+        }
+        
+        .trust-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            cursor: help;
+        }
+        
+        .trust-badge:hover::after {
+            content: "This model requires custom code execution";
+            position: absolute;
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-top: 20px;
+            margin-left: -100px;
+        }
+        
+        .api-key-item {
+            background-color: white;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .api-key-info {
+            flex: 1;
+        }
+        
+        .api-key-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .api-key-details {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .api-key-preview {
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+        
+        .api-key-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-copy {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-copy:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-delete {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-delete:hover {
+            background-color: #c0392b;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Norwegian Embeddings Service</h1>
+        <div class="header" style="position: relative;">
+            <h1>Nordic Embedding Service</h1>
             <p>Real-time monitoring and configuration dashboard</p>
+            <a href="/logout" id="logout-btn" style="display: none; position: absolute; top: 20px; right: 20px; padding: 8px 16px; background-color: #e74c3c; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">🚪 Logout</a>
+            <div style="margin-top: 10px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <strong>Base URL (RAGFlow Compatible):</strong>
+                        <code id="ragflow-base-url" style="background: #e9ecef; padding: 4px 12px; border-radius: 4px; font-size: 14px; font-weight: 600;">http://your-server:7000/</code>
+                        <button onclick="copyToClipboard('ragflow-base-url', event)" class="btn-small btn-copy" style="padding: 4px 10px; font-size: 12px;">Copy</button>
+                        <span style="color: #27ae60; font-size: 13px; font-weight: 500;">✓ Use this for RAGFlow</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <strong>OpenAI-Compatible Base URL:</strong>
+                        <code id="openai-base-url" style="background: #e9ecef; padding: 4px 12px; border-radius: 4px; font-size: 14px;">http://your-server:7000/v1/</code>
+                        <button onclick="copyToClipboard('openai-base-url', event)" class="btn-small btn-copy" style="padding: 4px 10px; font-size: 12px;">Copy</button>
+                        <span style="color: #6c757d; font-size: 13px;">✓ For other OpenAI-compatible tools</span>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div class="status-container">
@@ -530,7 +690,7 @@
                 <tbody>
                     <!-- Norwegian Models -->
                     <tr>
-                        <td class="model-name-cell">norbert2</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/ltg/norbert2" target="_blank" class="model-link">norbert2 <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -540,7 +700,7 @@
                         <td><span id="table-response-norbert2">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">nb-bert-base</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/NbAiLab/nb-bert-base" target="_blank" class="model-link">nb-bert-base <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -550,7 +710,7 @@
                         <td><span id="table-response-nb-bert-base">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">nb-bert-large</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/NbAiLab/nb-bert-large" target="_blank" class="model-link">nb-bert-large <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">1024</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-slow"></div></div><span>Slow</span></div></td>
@@ -560,7 +720,7 @@
                         <td><span id="table-response-nb-bert-large">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">simcse-nb-bert-large</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/FFI/SimCSE-NB-BERT-large" target="_blank" class="model-link">simcse-nb-bert-large <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">1024</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-slow"></div></div><span>Slow</span></div></td>
@@ -570,7 +730,7 @@
                         <td><span id="table-response-simcse-nb-bert-large">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">norbert3-base</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/ltg/norbert3-base" target="_blank" class="model-link">norbert3-base <span class="model-link-icon">🔗</span></a><span class="trust-badge" title="Requires trust_remote_code=True">⚠️ Custom Code</span></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -580,7 +740,7 @@
                         <td><span id="table-response-norbert3-base">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">norbert3-large</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/ltg/norbert3-large" target="_blank" class="model-link">norbert3-large <span class="model-link-icon">🔗</span></a><span class="trust-badge" title="Requires trust_remote_code=True">⚠️ Custom Code</span></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">1024</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-slow"></div></div><span>Slow</span></div></td>
@@ -590,7 +750,7 @@
                         <td><span id="table-response-norbert3-large">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">sentence-bert-base</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/NbAiLab/sentence-bert-base" target="_blank" class="model-link">sentence-bert-base <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-no">NO</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -601,7 +761,7 @@
                     </tr>
                     <!-- Swedish Models -->
                     <tr>
-                        <td class="model-name-cell">kb-bert-swedish</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/KB/bert-base-swedish-cased" target="_blank" class="model-link">kb-bert-swedish <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-se">SE</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -611,7 +771,7 @@
                         <td><span id="table-response-kb-bert-swedish">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">kb-sbert-swedish</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/KBLab/sentence-bert-swedish-cased" target="_blank" class="model-link">kb-sbert-swedish <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-se">SE</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -621,7 +781,7 @@
                         <td><span id="table-response-kb-sbert-swedish">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">bert-large-swedish</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/AI-Nordics/bert-large-swedish-cased" target="_blank" class="model-link">bert-large-swedish <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-se">SE</span></td>
                         <td><span class="dim-badge">1024</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-slow"></div></div><span>Slow</span></div></td>
@@ -631,7 +791,7 @@
                         <td><span id="table-response-bert-large-swedish">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">albert-swedish</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/KBLab/albert-base-swedish-cased-alpha" target="_blank" class="model-link">albert-swedish <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-se">SE</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -642,7 +802,7 @@
                     </tr>
                     <!-- Danish Models -->
                     <tr>
-                        <td class="model-name-cell">dabert</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/Maltehb/danish-bert-botxo" target="_blank" class="model-link">dabert <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-da">DA</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -652,7 +812,7 @@
                         <td><span id="table-response-dabert">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">aelaectra-danish</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/Maltehb/aelaectra-danish-electra-small-cased" target="_blank" class="model-link">aelaectra-danish <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-da">DA</span></td>
                         <td><span class="dim-badge">256</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -662,7 +822,7 @@
                         <td><span id="table-response-aelaectra-danish">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">da-bert-ner</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/DaNLP/da-bert-ner" target="_blank" class="model-link">da-bert-ner <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-da">DA</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -672,7 +832,7 @@
                         <td><span id="table-response-da-bert-ner">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">electra-base-danish</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/Maltehb/electra-base-danish-cased" target="_blank" class="model-link">electra-base-danish <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-da">DA</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -683,7 +843,7 @@
                     </tr>
                     <!-- Finnish Models -->
                     <tr>
-                        <td class="model-name-cell">finbert-base</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/TurkuNLP/bert-base-finnish-cased-v1" target="_blank" class="model-link">finbert-base <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-fi">FI</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -693,7 +853,7 @@
                         <td><span id="table-response-finbert-base">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">finbert-sbert</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/TurkuNLP/sbert-cased-finnish-paraphrase" target="_blank" class="model-link">finbert-sbert <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-fi">FI</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -703,7 +863,7 @@
                         <td><span id="table-response-finbert-sbert">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">finbert-large</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/TurkuNLP/bert-large-finnish-cased-v1" target="_blank" class="model-link">finbert-large <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-fi">FI</span></td>
                         <td><span class="dim-badge">1024</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-slow"></div></div><span>Slow</span></div></td>
@@ -714,7 +874,7 @@
                     </tr>
                     <!-- Icelandic Model -->
                     <tr>
-                        <td class="model-name-cell">icebert</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/mideind/IceBERT" target="_blank" class="model-link">icebert <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-is">IS</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -725,7 +885,7 @@
                     </tr>
                     <!-- Nordic/Multilingual Models -->
                     <tr>
-                        <td class="model-name-cell">electra-small-nordic</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/ltg/electra-small-nordic" target="_blank" class="model-link">electra-small-nordic <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-nordic">Nordic</span></td>
                         <td><span class="dim-badge">256</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -735,7 +895,7 @@
                         <td><span id="table-response-electra-small-nordic">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">xlm-roberta-base</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/xlm-roberta-base" target="_blank" class="model-link">xlm-roberta-base <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-multi">Multi</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -745,7 +905,7 @@
                         <td><span id="table-response-xlm-roberta-base">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">multilingual-e5-base</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/intfloat/multilingual-e5-base" target="_blank" class="model-link">multilingual-e5-base <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-multi">Multi</span></td>
                         <td><span class="dim-badge">768</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -755,7 +915,7 @@
                         <td><span id="table-response-multilingual-e5-base">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">paraphrase-multilingual-minilm</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" target="_blank" class="model-link">paraphrase-multilingual-minilm <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-multi">Multi</span></td>
                         <td><span class="dim-badge">384</span></td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -794,7 +954,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="model-name-cell">mmarco-minilm-l12</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1" target="_blank" class="model-link">mmarco-minilm-l12 <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge" style="background-color: #e8f5e9; color: #2e7d32;">Multilingual</span></td>
                         <td>14+ languages incl. Nordic</td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -804,7 +964,7 @@
                         <td><span id="rerank-response-mmarco-minilm-l12">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">ms-marco-minilm-l6</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2" target="_blank" class="model-link">ms-marco-minilm-l6 <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge" style="background-color: #e3f2fd; color: #1976d2;">Cross-lingual</span></td>
                         <td>English + cross-lingual</td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-fast"></div></div><span>Fast</span></div></td>
@@ -814,7 +974,7 @@
                         <td><span id="rerank-response-ms-marco-minilm-l6">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">ms-marco-minilm-l12</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/cross-encoder/ms-marco-MiniLM-L12-v2" target="_blank" class="model-link">ms-marco-minilm-l12 <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge" style="background-color: #e3f2fd; color: #1976d2;">Cross-lingual</span></td>
                         <td>English + cross-lingual</td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-slow"></div></div><span>Slower</span></div></td>
@@ -824,7 +984,7 @@
                         <td><span id="rerank-response-ms-marco-minilm-l12">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">jina-reranker-multilingual</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual" target="_blank" class="model-link">jina-reranker-multilingual <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge" style="background-color: #e8f5e9; color: #2e7d32;">Multilingual</span></td>
                         <td>Multiple languages</td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -834,7 +994,7 @@
                         <td><span id="rerank-response-jina-reranker-multilingual">-</span></td>
                     </tr>
                     <tr>
-                        <td class="model-name-cell">nordic-reranker</td>
+                        <td class="model-name-cell"><a href="https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1" target="_blank" class="model-link">nordic-reranker <span class="model-link-icon">🔗</span></a></td>
                         <td><span class="lang-badge lang-nordic">Nordic</span></td>
                         <td>Optimized for Nordic</td>
                         <td><div class="speed-indicator"><div class="speed-bar"><div class="speed-fill speed-medium"></div></div><span>Medium</span></div></td>
@@ -847,52 +1007,71 @@
             </table>
         </div>
         
-        <div class="config-section">
-            <h2>Embedding Service Configuration</h2>
-            <div class="info-item">
-                <span class="info-label">API Endpoint:</span>
-                <span class="info-value" id="api-endpoint">-</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Available Models:</span>
-                <span class="info-value" id="available-models">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Max Batch Size:</span>
-                <span class="info-value" id="batch-size">-</span>
-            </div>
-            <div class="info-item">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="config-section">
+                <h2>Embedding Service Configuration</h2>
+                <div class="info-item">
+                    <span class="info-label">OpenAI-Compatible Endpoint:</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <code id="embed-openai-endpoint" style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-size: 14px;">/v1/embeddings</code>
+                        <button onclick="copyToClipboard('embed-openai-endpoint', event)" class="btn-small btn-copy" style="padding: 4px 8px; font-size: 12px;">Copy</button>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Basic Endpoint:</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <code id="embed-basic-endpoint" style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-size: 14px;">/api/embed</code>
+                        <button onclick="copyToClipboard('embed-basic-endpoint', event)" class="btn-small btn-copy" style="padding: 4px 8px; font-size: 12px;">Copy</button>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Available Models:</span>
+                    <span class="info-value" id="available-models">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Max Batch Size:</span>
+                    <span class="info-value" id="batch-size">-</span>
+                </div>
+                <div class="info-item">
                 <span class="info-label">Max Token Length:</span>
                 <span class="info-value" id="max-length">-</span>
             </div>
         </div>
         
-        <div class="config-section">
-            <h2>Reranking Service Configuration</h2>
-            <div class="info-item">
-                <span class="info-label">Rerank Endpoint:</span>
-                <span class="info-value">/api/rerank</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Score Pairs Endpoint:</span>
-                <span class="info-value">/api/score-pairs</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Available Rerankers:</span>
-                <span class="info-value" id="available-rerankers">Loading...</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Default Model:</span>
-                <span class="info-value">mmarco-minilm-l12</span>
-            </div>
-            <div class="info-item">
+            <div class="config-section">
+                <h2>Reranking Service Configuration</h2>
+                <div class="info-item">
+                    <span class="info-label">OpenAI-Compatible Endpoint:</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <code id="rerank-openai-endpoint" style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-size: 14px;">/v1/rerank</code>
+                        <button onclick="copyToClipboard('rerank-openai-endpoint', event)" class="btn-small btn-copy" style="padding: 4px 8px; font-size: 12px;">Copy</button>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Basic Endpoints:</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <code id="rerank-basic-endpoints" style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-size: 14px;">/api/rerank, /api/score-pairs</code>
+                        <button onclick="copyToClipboard('rerank-basic-endpoints', event)" class="btn-small btn-copy" style="padding: 4px 8px; font-size: 12px;">Copy</button>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Available Rerankers:</span>
+                    <span class="info-value" id="available-rerankers">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Default Model:</span>
+                    <span class="info-value">mmarco-minilm-l12</span>
+                </div>
+                <div class="info-item">
                 <span class="info-label">Max Documents:</span>
                 <span class="info-value">100 per request</span>
             </div>
         </div>
+        </div>
         
-        <div class="config-section">
-            <h2>Device Configuration</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="config-section">
+                <h2>Device Configuration</h2>
             <div class="form-group">
                 <label for="device-select">Compute Device:</label>
                 <select id="device-select">
@@ -906,6 +1085,135 @@
                 <code style="display: block; margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">docker-compose restart</code>
             </div>
             <div id="device-save-result" class="result-box" style="display: none; margin-top: 15px;"></div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" class="btn" id="restart-container-btn" style="background-color: #e74c3c;">
+                    🔄 Restart Container
+                </button>
+                <button type="button" class="btn" id="view-logs-btn" style="background-color: #3498db;">
+                    📋 View Logs
+                </button>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h2>Custom Code Configuration</h2>
+            <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #dee2e6;">
+                <h4 style="margin: 0 0 10px 0; color: #2c3e50;">
+                    <span style="color: #e67e22;">🔐</span> About Trust Remote Code
+                </h4>
+                <p style="margin: 0 0 10px 0; color: #555; line-height: 1.6;">
+                    Some models (like <strong>norbert3-base</strong> and <strong>norbert3-large</strong>) contain custom Python code 
+                    that must be executed for the model to work properly. This code is downloaded from the model's HuggingFace repository.
+                </p>
+                <p style="margin: 0; color: #555; line-height: 1.6;">
+                    <strong>Security Notice:</strong> Enabling this feature means executing code from external sources. 
+                    Only enable for models from trusted organizations.
+                </p>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="trust-remote-code-toggle" style="margin-right: 10px; width: 20px; height: 20px;">
+                    <span style="font-weight: 600;">Allow models with custom code (trust_remote_code)</span>
+                </label>
+                <p style="margin-top: 5px; color: #7f8c8d; font-size: 13px;">
+                    Currently: <span id="trust-remote-code-status" style="font-weight: bold;">Loading...</span>
+                </p>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
+                <strong>⚠️ Important:</strong> Container restart is required after changing this setting. 
+                Models requiring custom code will show a <span class="trust-badge" style="margin: 0 4px;">⚠️ Custom Code</span> badge in the model list.
+            </div>
+            
+            <button type="button" class="btn" id="save-trust-btn">Save Custom Code Setting</button>
+            <div id="trust-save-result" class="result-box" style="display: none; margin-top: 15px;"></div>
+            <button type="button" class="btn" id="restart-container-trust-btn" style="margin-top: 15px; background-color: #e74c3c; display: none;">
+                🔄 Restart Container to Apply Changes
+            </button>
+        </div>
+        </div>
+        
+        <div class="config-section">
+            <h2>Authentication & Security</h2>
+            
+            <!-- Dashboard Authentication -->
+            <div style="margin-bottom: 30px;">
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">Dashboard Protection</h3>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="dashboard-auth-toggle" style="margin-right: 10px; width: 20px; height: 20px;">
+                        <span style="font-weight: 600;">Require password to access dashboard</span>
+                    </label>
+                    <p style="margin-top: 5px; color: #7f8c8d; font-size: 13px;">
+                        Status: <span id="dashboard-auth-status" style="font-weight: bold;">Loading...</span>
+                    </p>
+                </div>
+                <div id="dashboard-password-section" style="display: none; margin-top: 15px;">
+                    <div class="form-group">
+                        <label for="dashboard-password">New Dashboard Password:</label>
+                        <input type="password" id="dashboard-password" placeholder="Enter password" style="width: 300px;">
+                    </div>
+                    <div class="form-group">
+                        <label for="dashboard-password-confirm">Confirm Password:</label>
+                        <input type="password" id="dashboard-password-confirm" placeholder="Confirm password" style="width: 300px;">
+                    </div>
+                </div>
+                <button type="button" class="btn" id="save-dashboard-auth-btn" disabled>Save Dashboard Settings</button>
+                <div id="dashboard-auth-result" class="result-box" style="display: none; margin-top: 15px;"></div>
+            </div>
+            
+            <!-- API Authentication -->
+            <div style="margin-bottom: 30px;">
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">API Authentication</h3>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="api-auth-toggle" style="margin-right: 10px; width: 20px; height: 20px;">
+                        <span style="font-weight: 600;">Require API key for service access</span>
+                    </label>
+                    <p style="margin-top: 5px; color: #7f8c8d; font-size: 13px;">
+                        Status: <span id="api-auth-status" style="font-weight: bold;">Loading...</span>
+                    </p>
+                </div>
+                
+                <div id="api-auth-warning" style="display: none; margin: 15px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
+                    <strong>⚠️ Warning:</strong> Enabling API authentication will require all requests to include an API key. 
+                    Make sure to create at least one API key before enabling this feature.
+                </div>
+                
+                <button type="button" class="btn" id="save-api-auth-btn" disabled>Save API Settings</button>
+                <div id="api-auth-result" class="result-box" style="display: none; margin-top: 15px;"></div>
+            </div>
+            
+            <!-- API Key Management -->
+            <div>
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">API Key Management</h3>
+                <div style="margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label for="new-api-key-name">API Key Name:</label>
+                        <input type="text" id="new-api-key-name" placeholder="e.g., Production App" style="width: 300px;">
+                    </div>
+                    <button type="button" class="btn" id="create-api-key-btn">Create New API Key</button>
+                </div>
+                
+                <div id="api-keys-list" class="models-table-section" style="margin-top: 20px; background-color: #f8f9fa;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px;">Active API Keys</h3>
+                    <div style="margin-bottom: 15px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;">
+                        <strong>⚠️ Security Notice:</strong> Full API keys are displayed below with copy buttons for convenience. 
+                        Keep this dashboard secure and only access it from trusted networks.
+                    </div>
+                    <div id="api-keys-container">
+                        <p style="color: #7f8c8d;">Loading API keys...</p>
+                    </div>
+                </div>
+                
+                <div id="api-key-stats" style="margin-top: 20px; display: none;">
+                    <h4 style="color: #34495e; margin-bottom: 15px;">API Key Usage Statistics</h4>
+                    <div id="api-stats-container" style="background-color: #f8f9fa; padding: 15px; border-radius: 4px;">
+                        <!-- Stats will be populated here -->
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div class="test-section">
@@ -918,8 +1226,15 @@
             </div>
             <form id="test-form">
                 <div class="form-group">
+                    <label for="test-api-key">API Key (if authentication is enabled):</label>
+                    <input type="text" id="test-api-key" placeholder="Enter your API key here..." style="width: 100%;">
+                    <p style="margin-top: 5px; color: #7f8c8d; font-size: 12px;">
+                        Leave empty if API authentication is disabled
+                    </p>
+                </div>
+                <div class="form-group">
                     <label for="test-text">Text to Embed:</label>
-                    <textarea id="test-text" placeholder="Enter Norwegian text here...">Dette er en test av den norske embeddingstjenesten.</textarea>
+                    <textarea id="test-text" placeholder="Enter Nordic language text here...">Dette er en test av den nordiske embeddingstjenesten.</textarea>
                 </div>
                 <div class="form-group">
                     <label for="test-model">Model:</label>
@@ -978,6 +1293,13 @@
             </div>
             <form id="rerank-form">
                 <div class="form-group">
+                    <label for="rerank-api-key">API Key (if authentication is enabled):</label>
+                    <input type="text" id="rerank-api-key" placeholder="Enter your API key here..." style="width: 100%;">
+                    <p style="margin-top: 5px; color: #7f8c8d; font-size: 12px;">
+                        Leave empty if API authentication is disabled
+                    </p>
+                </div>
+                <div class="form-group">
                     <label for="rerank-query">Search Query:</label>
                     <input type="text" id="rerank-query" placeholder="Enter your search query..." value="Hva er hovedstaden i Norge?">
                 </div>
@@ -1012,6 +1334,32 @@ København er hovedstaden i Danmark og Skandinavias største by.</textarea>
         </div>
     </div>
     
-    <script src="/static/dashboard.js"></script>
+    <!-- Log Viewer Modal -->
+    <div id="log-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+        <div style="background-color: #fff; margin: 50px auto; padding: 20px; width: 90%; max-width: 1200px; max-height: 80vh; overflow: hidden; border-radius: 8px; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Container Logs</h2>
+                <div style="display: flex; gap: 10px;">
+                    <select id="log-lines-select" style="padding: 5px;">
+                        <option value="50">Last 50 lines</option>
+                        <option value="100" selected>Last 100 lines</option>
+                        <option value="200">Last 200 lines</option>
+                        <option value="500">Last 500 lines</option>
+                    </select>
+                    <button class="btn" onclick="refreshLogs()" style="padding: 5px 15px;">🔄 Refresh</button>
+                    <button class="btn" onclick="closeLogModal()" style="padding: 5px 15px; background-color: #e74c3c;">✕ Close</button>
+                </div>
+            </div>
+            <div style="flex: 1; overflow: auto; background-color: #1e1e1e; padding: 15px; border-radius: 4px;">
+                <pre id="log-content" style="margin: 0; color: #d4d4d4; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;">Loading logs...</pre>
+            </div>
+            <div style="margin-top: 10px; color: #7f8c8d; font-size: 12px;">
+                <span id="log-timestamp">Last updated: -</span>
+                <span style="float: right;">Tip: Logs auto-refresh every 5 seconds when modal is open</span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/dashboard.js?v=17"></script>
 </body>
 </html>

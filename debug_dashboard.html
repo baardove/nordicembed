@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Dashboard - NoEmbed</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        .result { margin-top: 10px; padding: 10px; background: #f0f0f0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Debug Dashboard</h1>
+    
+    <div class="test-section">
+        <h2>Test Embedding</h2>
+        <button onclick="testEmbedding()">Test Embedding Endpoint</button>
+        <div id="embed-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Reranking</h2>
+        <button onclick="testReranking()">Test Reranking Endpoint</button>
+        <div id="rerank-result"></div>
+    </div>
+    
+    <script>
+        const BASE_URL = window.location.origin;
+        
+        async function testEmbedding() {
+            const resultDiv = document.getElementById('embed-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/test-embed`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        texts: ['Dette er en test'],
+                        model: 'norbert2',
+                        pooling_strategy: 'mean'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Success!</div>
+                        <div>Embedding dimensions: ${data.embeddings[0].length}</div>
+                        <div>First 5 values: ${data.embeddings[0].slice(0, 5).map(v => v.toFixed(4)).join(', ')}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error: ${data.detail || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Network Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testReranking() {
+            const resultDiv = document.getElementById('rerank-result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/rerank`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: 'Hva er hovedstaden i Norge?',
+                        documents: [
+                            'Oslo er hovedstaden i Norge',
+                            'Bergen er en by i Norge'
+                        ],
+                        model: 'mmarco-minilm-l12',
+                        top_k: 2
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Success!</div>
+                        <div>Reranked ${data.results.length} documents:</div>
+                        ${data.results.map(r => `
+                            <div>Score: ${r.score.toFixed(4)} - ${r.document}</div>
+                        `).join('')}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error: ${data.detail || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Network Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Log to help debug
+        console.log('Debug Dashboard loaded');
+        console.log('BASE_URL:', BASE_URL);
+    </script>
+</body>
+</html>

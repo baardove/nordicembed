@@ -1,20 +1,33 @@
 import os
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import time
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Form, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
 from embeddings import EmbeddingService
 from reranker import RerankerService
-from config import get_settings
+from config import get_settings, save_device_config
+from auth_config import (
+    load_auth_config, save_auth_config, verify_dashboard_password,
+    verify_api_key, add_api_key, remove_api_key, get_api_key_stats,
+    hash_password, get_or_create_internal_key
+)
+from ragflow_adapter import (
+    is_ragflow_request, 
+    convert_ragflow_to_standard_rerank,
+    convert_standard_to_ragflow_response,
+    RAGFlowRerankRequest,
+    RAGFlowRerankResponse
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -167,8 +180,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Norwegian Embedding Service",
-    description="Local embedding service for Norwegian/Scandinavian language models",
+    title="Nordic Embedding Service",
+    description="Local embedding service for Nordic language models",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -182,13 +195,223 @@ app.add_middleware(
 )
 
 
+# Authentication middleware
+@app.middleware("http")
+async def auth_middleware(request, call_next):
+    """Check API key authentication for protected endpoints"""
+    path = request.url.path
+    
+    # Skip auth for dashboard, static files, and auth endpoints
+    if path.startswith("/static") or path.startswith("/api/auth") or path in ["/", "/favicon.ico", "/api/health"]:
+        return await call_next(request)
+    
+    # Check if API auth is enabled
+    auth_config = load_auth_config()
+    if auth_config.api_auth_enabled and path.startswith("/api"):
+        # Extract API key from header
+        api_key = request.headers.get("X-API-Key") or request.headers.get("Authorization")
+        if api_key and api_key.startswith("Bearer "):
+            api_key = api_key[7:]  # Remove "Bearer " prefix
+        
+        # Verify API key
+        key_name = verify_api_key(api_key) if api_key else None
+        if not key_name:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing API key"}
+            )
+        
+        # Add key name to request state for logging
+        request.state.api_key_name = key_name
+    
+    response = await call_next(request)
+    return response
+
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+async def root(request: Request):
+    """Serve dashboard with optional password protection"""
+    auth_config = load_auth_config()
+    
+    # Check if dashboard auth is enabled
+    if auth_config.dashboard_auth_enabled:
+        # Check for auth cookie
+        auth_cookie = request.cookies.get("dashboard_auth")
+        
+        # If no valid auth cookie, show login form
+        if not auth_cookie or auth_cookie != auth_config.dashboard_password_hash:
+            return HTMLResponse(content="""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Nordic Embeddings - Login</title>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            display: flex; 
+                            justify-content: center; 
+                            align-items: center; 
+                            height: 100vh; 
+                            margin: 0;
+                            background-color: #f5f5f5;
+                        }
+                        .login-box {
+                            background: white;
+                            padding: 40px;
+                            border-radius: 8px;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                            width: 300px;
+                        }
+                        h2 { margin-bottom: 20px; color: #333; }
+                        input[type="password"] {
+                            width: 100%;
+                            padding: 10px;
+                            margin-bottom: 20px;
+                            border: 1px solid #ddd;
+                            border-radius: 4px;
+                            font-size: 16px;
+                        }
+                        button {
+                            width: 100%;
+                            padding: 10px;
+                            background-color: #3498db;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            font-size: 16px;
+                            cursor: pointer;
+                        }
+                        button:hover { background-color: #2980b9; }
+                        .error { color: #e74c3c; margin-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="login-box">
+                        <h2>Nordic Embeddings Dashboard</h2>
+                        <form method="post" action="/login">
+                            <input type="password" name="password" placeholder="Enter password" required autofocus>
+                            <button type="submit">Login</button>
+                        </form>
+                        <div class="error" id="error"></div>
+                    </div>
+                    <script>
+                        if (window.location.search.includes('password=')) {
+                            document.getElementById('error').textContent = 'Invalid password';
+                        }
+                    </script>
+                </body>
+                </html>
+            """)
+    
+    # Serve dashboard
     with open("static/index.html", "r") as f:
+        return f.read()
+
+
+@app.post("/login")
+async def login(response: Response, password: str = Form(...)):
+    """Handle login form submission"""
+    auth_config = load_auth_config()
+    
+    if verify_dashboard_password(password):
+        # Set a secure cookie with the password hash
+        response = RedirectResponse(url="/", status_code=303)
+        response.set_cookie(
+            key="dashboard_auth",
+            value=hash_password(password),
+            httponly=True,
+            secure=False,  # Set to True if using HTTPS
+            samesite="lax",
+            max_age=86400  # 24 hours
+        )
+        return response
+    else:
+        # Return login form with error
+        return HTMLResponse(content="""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Nordic Embeddings - Login</title>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        display: flex; 
+                        justify-content: center; 
+                        align-items: center; 
+                        height: 100vh; 
+                        margin: 0;
+                        background-color: #f5f5f5;
+                    }
+                    .login-box {
+                        background: white;
+                        padding: 40px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        width: 300px;
+                    }
+                    h2 { margin-bottom: 20px; color: #333; }
+                    input[type="password"] {
+                        width: 100%;
+                        padding: 10px;
+                        margin-bottom: 20px;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        font-size: 16px;
+                    }
+                    button {
+                        width: 100%;
+                        padding: 10px;
+                        background-color: #3498db;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        font-size: 16px;
+                        cursor: pointer;
+                    }
+                    button:hover { background-color: #2980b9; }
+                    .error { 
+                        color: #e74c3c; 
+                        margin-top: 10px; 
+                        text-align: center;
+                        font-size: 14px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="login-box">
+                    <h2>Nordic Embeddings Dashboard</h2>
+                    <form method="post" action="/login">
+                        <input type="password" name="password" placeholder="Enter password" required autofocus>
+                        <button type="submit">Login</button>
+                    </form>
+                    <div class="error">Invalid password</div>
+                </div>
+            </body>
+            </html>
+        """, status_code=401)
+
+
+@app.get("/logout")
+async def logout():
+    """Logout by clearing the auth cookie"""
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie("dashboard_auth")
+    return response
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/favicon.ico")
+
+
+@app.get("/debug", response_class=HTMLResponse)
+async def debug_dashboard():
+    with open("debug_dashboard.html", "r") as f:
         return f.read()
 
 
@@ -202,27 +425,70 @@ async def health_check():
 
 @app.get("/v1/models")
 async def list_models():
-    """OpenAI-compatible models endpoint"""
+    """List all available models (OpenAI-compatible)"""
+    models = []
+    
+    # Add embedding models
+    for model_id in EmbeddingService.MODEL_CONFIGS.keys():
+        models.append({
+            "id": model_id,
+            "object": "model",
+            "created": 1700000000,  # Placeholder timestamp
+            "owned_by": "noembed",
+            "permission": [],
+            "root": model_id,
+            "parent": None,
+            "capabilities": {
+                "embeddings": True,
+                "reranking": False
+            },
+            "type": "embedding"
+        })
+    
+    # Add reranking models with clearer naming for RAGFlow
+    for model_id in RerankerService.RERANKER_CONFIGS.keys():
+        models.append({
+            "id": model_id,
+            "object": "model",
+            "created": 1700000000,  # Placeholder timestamp
+            "owned_by": "noembed",
+            "permission": [],
+            "root": model_id,
+            "parent": None,
+            "capabilities": {
+                "embeddings": False,
+                "reranking": True
+            },
+            "type": "reranking"
+        })
+        
+        # Also add with -reranker suffix for clarity
+        if not model_id.endswith("-reranker"):
+            models.append({
+                "id": f"{model_id}-reranker",
+                "object": "model",
+                "created": 1700000000,
+                "owned_by": "noembed",
+                "permission": [],
+                "root": model_id,
+                "parent": None,
+                "capabilities": {
+                    "embeddings": False,
+                    "reranking": True
+                },
+                "type": "reranking"
+            })
+    
     return {
         "object": "list",
-        "data": [
-            {
-                "id": settings.model_name,
-                "object": "model",
-                "created": 1677532384,
-                "owned_by": "norwegian-embeddings",
-                "permission": [],
-                "root": settings.model_name,
-                "parent": None,
-            }
-        ]
+        "data": models
     }
 
 
 @app.get("/api/info")
 async def service_info():
     return {
-        "service": "Norwegian Embedding Service",
+        "service": "Nordic Embedding Service",
         "model": settings.model_name,
         "device": settings.device,
         "max_batch_size": settings.max_batch_size,
@@ -244,6 +510,7 @@ async def service_info():
             "icebert"
         ],
         "available_rerankers": list(RerankerService.RERANKER_CONFIGS.keys()),
+        "allow_trust_remote_code": settings.allow_trust_remote_code,
         "status": "running"
     }
 
@@ -283,16 +550,37 @@ async def generate_embeddings(request: EmbedRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/v1/embeddings", response_model=OpenAIEmbeddingResponse)
+@app.post("/v1/embeddings", response_model=OpenAIEmbeddingResponse)
 async def openai_compatible_embeddings(request: OpenAIEmbeddingRequest):
     """OpenAI-compatible embeddings endpoint for RAGFlow and other tools"""
-    logger.info(f"Received embedding request - Input type: {type(request.input)}, Length: {len(request.input) if isinstance(request.input, list) else 1}")
+    logger.info(f"Received embedding request - Model: {request.model}, Input type: {type(request.input)}, Length: {len(request.input) if isinstance(request.input, list) else 1}")
+    logger.info(f"Request headers: {request.__dict__ if hasattr(request, '__dict__') else 'N/A'}")
     
     if not embedding_service:
         raise HTTPException(status_code=503, detail="Model not loaded")
     
     # Extract model name from request (default to current model)
     requested_model = request.model if request.model else settings.model_name
+    
+    # Check if this is a reranking model being requested through the wrong endpoint
+    if requested_model in RerankerService.RERANKER_CONFIGS:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Model '{requested_model}' is a reranking model. Use /v1/rerank endpoint instead of /v1/embeddings for reranking tasks."
+        )
+    
+    # Check if the requested model is available for embeddings
+    if requested_model not in embedding_service.MODEL_CONFIGS:
+        # Check if it might be a reranking model (double check)
+        if requested_model in RerankerService.RERANKER_CONFIGS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{requested_model}' is a reranking model. Please use POST /v1/rerank instead of /v1/embeddings."
+            )
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model '{requested_model}' is not available. Available embedding models: {', '.join(sorted(embedding_service.MODEL_CONFIGS.keys()))}"
+        )
     
     # Convert input to list if it's a string
     texts = [request.input] if isinstance(request.input, str) else request.input
@@ -308,9 +596,23 @@ async def openai_compatible_embeddings(request: OpenAIEmbeddingRequest):
     
     try:
         start_time = time.time()
-        embeddings = embedding_service.embed(texts)
+        
+        # If a different model is requested, create a temporary service
+        if requested_model != settings.model_name:
+            from embeddings import EmbeddingService as ES
+            temp_service = ES(
+                model_name=requested_model,
+                model_path=settings.model_path,
+                device=settings.device,
+                max_length=settings.max_length
+            )
+            embeddings = temp_service.embed(texts)
+            del temp_service
+        else:
+            embeddings = embedding_service.embed(texts)
+        
         embed_time = time.time() - start_time
-        logger.info(f"Generated embeddings for {len(texts)} texts in {embed_time:.3f}s")
+        logger.info(f"Generated embeddings for {len(texts)} texts in {embed_time:.3f}s using model {requested_model}")
         
         # Track metrics
         metrics.track_request("/api/v1/embeddings", len(texts), embed_time, model=requested_model)
@@ -415,6 +717,21 @@ class ScorePairsRequest(BaseModel):
 class ScorePairsResponse(BaseModel):
     scores: List[float] = Field(..., description="Relevance scores for each pair")
     model: str = Field(..., description="Model used for scoring")
+
+
+class OpenAIRerankRequest(BaseModel):
+    model: str = Field(..., description="Model to use for reranking")
+    query: str = Field(..., description="The search query")
+    documents: List[str] = Field(..., description="List of documents to rerank")
+    top_n: Optional[int] = Field(None, description="Number of top results to return")
+    return_documents: Optional[bool] = Field(True, description="Whether to return full documents")
+
+
+class OpenAIRerankResponse(BaseModel):
+    object: str = "list"
+    data: List[Dict[str, Any]]
+    model: str
+    usage: Dict[str, int]
 
 
 class DeviceUpdateRequest(BaseModel):
@@ -532,36 +849,135 @@ async def score_pairs(request: ScorePairsRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/v1/rerank", response_model=OpenAIRerankResponse)
+async def openai_compatible_rerank(request: OpenAIRerankRequest):
+    """OpenAI-compatible reranking endpoint"""
+    if not request.documents:
+        raise HTTPException(status_code=400, detail="No documents provided")
+    
+    # Check if requested model is available
+    if request.model not in RerankerService.RERANKER_CONFIGS:
+        # Check if it's an embedding model
+        if request.model in EmbeddingService.MODEL_CONFIGS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{request.model}' is an embedding model. Use /v1/embeddings endpoint for embeddings."
+            )
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Model '{request.model}' not available. Available reranking models: {', '.join(RerankerService.RERANKER_CONFIGS.keys())}"
+        )
+    
+    try:
+        start_time = time.time()
+        
+        # Create reranker service
+        reranker = RerankerService(
+            model_name=request.model,
+            model_path=settings.model_path,
+            device=settings.device,
+            max_length=settings.max_length
+        )
+        
+        # Rerank documents
+        results = reranker.rerank(
+            query=request.query,
+            documents=request.documents,
+            top_k=request.top_n
+        )
+        
+        response_time = time.time() - start_time
+        
+        # Track metrics
+        metrics.track_request("/v1/rerank", len(request.documents), response_time, model=request.model)
+        
+        # Format response in OpenAI-compatible format
+        data = []
+        for idx, (original_idx, score, doc) in enumerate(results):
+            result_item = {
+                "index": idx,
+                "relevance_score": float(score),
+                "original_index": original_idx
+            }
+            if request.return_documents:
+                result_item["document"] = doc
+            data.append(result_item)
+        
+        # Clean up
+        del reranker
+        
+        # Calculate token usage (approximate)
+        total_chars = len(request.query) + sum(len(doc) for doc in request.documents)
+        approx_tokens = total_chars // 4  # Rough approximation
+        
+        return OpenAIRerankResponse(
+            object="list",
+            data=data,
+            model=request.model,
+            usage={
+                "prompt_tokens": approx_tokens,
+                "total_tokens": approx_tokens
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error reranking documents: {str(e)}")
+        metrics.total_errors += 1
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/rerank", response_model=RAGFlowRerankResponse)
+async def ragflow_rerank_endpoint(request: RAGFlowRerankRequest):
+    """RAGFlow-compatible reranking endpoint that matches their expected format"""
+    logger.info(f"Received RAGFlow rerank request - Query: {request.query[:50]}...")
+    
+    # Determine which model to use based on URL path or default
+    # RAGFlow will configure the model in llm_factories.json
+    default_model = "mmarco-minilm-l12"  # Default reranking model
+    
+    try:
+        start_time = time.time()
+        
+        # Create reranker service with default model
+        reranker = RerankerService(
+            model_name=default_model,
+            model_path=settings.model_path,
+            device=settings.device,
+            max_length=settings.max_length
+        )
+        
+        # Score each document against the query
+        scores = reranker.score_pairs([(request.query, doc) for doc in request.docs])
+        
+        response_time = time.time() - start_time
+        logger.info(f"Reranked {len(request.docs)} documents in {response_time:.3f}s")
+        
+        # Track metrics
+        metrics.track_request("/rerank", len(request.docs), response_time, model=default_model)
+        
+        # Clean up
+        del reranker
+        
+        # Return scores in RAGFlow expected format
+        return RAGFlowRerankResponse(scores=scores)
+        
+    except Exception as e:
+        logger.error(f"Error in RAGFlow reranking: {str(e)}")
+        metrics.total_errors += 1
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/update-device")
 async def update_device_setting(request: DeviceUpdateRequest):
-    """Update the device setting in the .env file"""
-    if request.device not in ["cpu", "cuda"]:
+    """Update the device setting in the writable config directory"""
+    if request.device.lower() not in ["cpu", "cuda"]:
         raise HTTPException(status_code=400, detail="Device must be 'cpu' or 'cuda'")
     
     try:
-        # Read the current .env file
-        env_path = ".env"
-        lines = []
+        # Save to writable config directory
+        success = save_device_config(request.device)
         
-        if os.path.exists(env_path):
-            with open(env_path, 'r') as f:
-                lines = f.readlines()
-        
-        # Update or add DEVICE setting
-        device_found = False
-        for i, line in enumerate(lines):
-            if line.strip().startswith('DEVICE='):
-                lines[i] = f"DEVICE={request.device}  # cpu or cuda\n"
-                device_found = True
-                break
-        
-        # If DEVICE not found, add it
-        if not device_found:
-            lines.append(f"\nDEVICE={request.device}  # cpu or cuda\n")
-        
-        # Write back to .env file
-        with open(env_path, 'w') as f:
-            f.writelines(lines)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save device configuration")
         
         logger.info(f"Updated device setting to: {request.device}")
         
@@ -569,15 +985,259 @@ async def update_device_setting(request: DeviceUpdateRequest):
             "status": "success",
             "message": f"Device setting updated to {request.device}",
             "device": request.device,
+            "config_location": "config/device.json",
             "note": "Container restart required for changes to take effect"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error updating device setting: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update device setting: {str(e)}")
 
 
+@app.post("/api/config/trust-remote-code")
+async def update_trust_remote_code(request: Dict[str, bool]):
+    """Update the trust_remote_code setting"""
+    enabled = request.get("enabled", True)
+    
+    try:
+        # Save to .env file
+        env_path = Path(".env")
+        env_lines = []
+        
+        if env_path.exists():
+            with open(env_path, 'r') as f:
+                env_lines = f.readlines()
+        
+        # Update or add ALLOW_TRUST_REMOTE_CODE
+        updated = False
+        for i, line in enumerate(env_lines):
+            if line.strip().startswith("ALLOW_TRUST_REMOTE_CODE="):
+                env_lines[i] = f"ALLOW_TRUST_REMOTE_CODE={'true' if enabled else 'false'}\n"
+                updated = True
+                break
+        
+        if not updated:
+            env_lines.append(f"\nALLOW_TRUST_REMOTE_CODE={'true' if enabled else 'false'}\n")
+        
+        with open(env_path, 'w') as f:
+            f.writelines(env_lines)
+        
+        logger.info(f"Updated ALLOW_TRUST_REMOTE_CODE to: {enabled}")
+        
+        return {
+            "status": "success",
+            "message": f"Trust remote code {'enabled' if enabled else 'disabled'}",
+            "enabled": enabled,
+            "config_location": ".env",
+            "note": "Container restart required for changes to take effect"
+        }
+    
+    except Exception as e:
+        logger.error(f"Error updating trust_remote_code setting: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update setting: {str(e)}")
+
+
+@app.post("/api/restart")
+async def restart_container():
+    """Restart the container (only works inside Docker)"""
+    try:
+        # Check if we're running in Docker
+        if not os.path.exists("/.dockerenv"):
+            raise HTTPException(
+                status_code=503, 
+                detail="Container restart only available when running in Docker"
+            )
+        
+        # Send signal to restart (container should have restart policy)
+        logger.info("Container restart requested")
+        
+        # Create a background task to exit after response
+        import asyncio
+        async def delayed_exit():
+            await asyncio.sleep(1)
+            os._exit(0)  # Force exit to trigger container restart
+        
+        asyncio.create_task(delayed_exit())
+        
+        return {
+            "status": "success",
+            "message": "Container restart initiated"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error restarting container: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to restart: {str(e)}")
+
+
+# Authentication endpoints
+@app.get("/api/auth/status")
+async def get_auth_status():
+    """Get current authentication status"""
+    config = load_auth_config()
+    return {
+        "dashboard_auth_enabled": config.dashboard_auth_enabled,
+        "api_auth_enabled": config.api_auth_enabled,
+        "api_keys_count": len(config.api_keys)
+    }
+
+
+@app.get("/api/auth/internal-key")
+async def get_internal_key():
+    """Get internal API key for system operations"""
+    # This endpoint doesn't require auth since it's used by the dashboard
+    # but only returns the key if API auth is enabled
+    config = load_auth_config()
+    if config.api_auth_enabled:
+        internal_key = get_or_create_internal_key()
+        return {"api_key": internal_key}
+    return {"api_key": None}
+
+
+@app.get("/api/logs")
+async def get_logs(lines: int = 100):
+    """Get recent container logs"""
+    try:
+        # Read from the standard output/error logs
+        import subprocess
+        
+        # Try to get logs from the running container
+        result = subprocess.run(
+            ["tail", "-n", str(lines), "/proc/1/fd/1"],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            logs = result.stdout
+        else:
+            # Fallback: try to read from Python's logging
+            logs = "Unable to read container logs directly. Check docker-compose logs."
+        
+        return {
+            "logs": logs,
+            "lines": lines,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error reading logs: {str(e)}")
+        return {
+            "logs": f"Error reading logs: {str(e)}",
+            "lines": 0,
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+@app.post("/api/auth/dashboard")
+async def update_dashboard_auth(request: Dict[str, Any]):
+    """Update dashboard authentication settings"""
+    enabled = request.get("enabled", False)
+    password = request.get("password")
+    
+    config = load_auth_config()
+    config.dashboard_auth_enabled = enabled
+    
+    if enabled and password:
+        config.dashboard_password_hash = hash_password(password)
+    elif not enabled:
+        config.dashboard_password_hash = None
+    
+    if save_auth_config(config):
+        return {
+            "status": "success",
+            "message": f"Dashboard authentication {'enabled' if enabled else 'disabled'}"
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save authentication settings")
+
+
+@app.post("/api/auth/api")
+async def update_api_auth(request: Dict[str, bool]):
+    """Update API authentication settings"""
+    enabled = request.get("enabled", False)
+    
+    config = load_auth_config()
+    config.api_auth_enabled = enabled
+    
+    if save_auth_config(config):
+        return {
+            "status": "success",
+            "message": f"API authentication {'enabled' if enabled else 'disabled'}"
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save authentication settings")
+
+
+@app.post("/api/auth/keys")
+async def create_api_key(request: Dict[str, str]):
+    """Create a new API key"""
+    name = request.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="API key name is required")
+    
+    api_key = add_api_key(name)
+    if api_key:
+        return {
+            "status": "success",
+            "api_key": api_key,
+            "name": name
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to create API key")
+
+
+@app.get("/api/auth/keys")
+async def list_api_keys(include_full_keys: bool = True):
+    """List all API keys with their stats"""
+    # Note: Setting include_full_keys=True by default as user requested
+    # This is less secure but provides better usability
+    return get_api_key_stats(include_full_keys=include_full_keys)
+
+
+@app.delete("/api/auth/keys/{name}")
+async def delete_api_key(name: str):
+    """Delete an API key by name"""
+    config = load_auth_config()
+    
+    # Find the key by name
+    key_to_delete = None
+    for key, info in config.api_keys.items():
+        if info.name == name:
+            key_to_delete = key
+            break
+    
+    if key_to_delete and remove_api_key(key_to_delete):
+        return {
+            "status": "success",
+            "message": f"API key '{name}' deleted"
+        }
+    else:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+
+# Catch-all route for debugging
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def catch_all(request: Request, path: str):
+    """Log any unmatched routes for debugging"""
+    body = None
+    try:
+        body = await request.body()
+        body_str = body.decode() if body else "No body"
+    except:
+        body_str = "Could not read body"
+    
+    logger.warning(f"Unmatched route - Method: {request.method}, Path: /{path}, Headers: {dict(request.headers)}, Body: {body_str[:200]}")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
 if __name__ == "__main__":
+    # Show startup configuration info
+    from startup_info import print_startup_info
+    print_startup_info()
+    
     uvicorn.run(
         "main:app",
         host=settings.host,

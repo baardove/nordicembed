@@ -33,12 +33,14 @@ class EmbeddingService:
         "norbert3-base": {
             "model_name": "ltg/norbert3-base",
             "local_path": "norbert3-base",
-            "pooling": "mean"
+            "pooling": "mean",
+            "trust_remote_code": True
         },
         "norbert3-large": {
             "model_name": "ltg/norbert3-large",
             "local_path": "norbert3-large",
-            "pooling": "mean"
+            "pooling": "mean",
+            "trust_remote_code": True
         },
         "xlm-roberta-base": {
             "model_name": "xlm-roberta-base",
@@ -147,15 +149,27 @@ class EmbeddingService:
     def _load_model(self):
         local_model_path = os.path.join(self.model_path, self.config["local_path"])
         
+        # Check if model requires trust_remote_code
+        trust_remote_code = self.config.get("trust_remote_code", False)
+        
+        # Check global setting
+        from config import get_settings
+        settings = get_settings()
+        if trust_remote_code and not settings.allow_trust_remote_code:
+            raise ValueError(f"Model {self.model_name} requires trust_remote_code=True, but ALLOW_TRUST_REMOTE_CODE is disabled. Set ALLOW_TRUST_REMOTE_CODE=true in your .env file to enable.")
+        
         try:
             if os.path.exists(local_model_path):
                 logger.info(f"Loading model from local path: {local_model_path}")
-                self.tokenizer = AutoTokenizer.from_pretrained(local_model_path)
-                self.model = AutoModel.from_pretrained(local_model_path)
+                self.tokenizer = AutoTokenizer.from_pretrained(local_model_path, trust_remote_code=trust_remote_code)
+                self.model = AutoModel.from_pretrained(local_model_path, trust_remote_code=trust_remote_code)
             else:
                 logger.info(f"Loading model from HuggingFace: {self.config['model_name']}")
-                self.tokenizer = AutoTokenizer.from_pretrained(self.config["model_name"])
-                self.model = AutoModel.from_pretrained(self.config["model_name"])
+                if trust_remote_code:
+                    logger.warning(f"Model {self.config['model_name']} requires trust_remote_code=True. This will execute custom code from the model repository.")
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(self.config["model_name"], trust_remote_code=trust_remote_code)
+                self.model = AutoModel.from_pretrained(self.config["model_name"], trust_remote_code=trust_remote_code)
                 
                 logger.info(f"Saving model to: {local_model_path}")
                 os.makedirs(local_model_path, exist_ok=True)

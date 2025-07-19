@@ -16,16 +16,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create models directory
-RUN mkdir -p models
+# Create models and config directories
+RUN mkdir -p models config && \
+    chmod 755 config
 
 # Expose port
-EXPOSE 6000
+EXPOSE 7000
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV HOST=0.0.0.0
-ENV PORT=6000
+ENV PORT=7000
 
 # Run the application
 CMD ["python", "main.py"]

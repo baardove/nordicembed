@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dashboard UI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+        .info { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard UI Test</h1>
+    
+    <div class="info">
+        <h3>Instructions:</h3>
+        <ol>
+            <li>The dashboard is loaded below in an iframe</li>
+            <li>Open your browser's Developer Console (F12) to see any JavaScript errors</li>
+            <li>Try clicking "Generate Embeddings" button - it should work now</li>
+            <li>Try the "Test Reranking" section as well</li>
+        </ol>
+        
+        <h3>Direct Test Links:</h3>
+        <ul>
+            <li><a href="http://localhost:7000/" target="_blank">Open Dashboard in New Tab</a></li>
+            <li><a href="http://localhost:7000/debug" target="_blank">Open Debug Dashboard</a></li>
+        </ul>
+    </div>
+    
+    <h2>Dashboard Preview:</h2>
+    <iframe src="http://localhost:7000/" id="dashboard-frame"></iframe>
+    
+    <script>
+        // Monitor for console errors from iframe
+        window.addEventListener('message', function(e) {
+            if (e.data.type === 'error') {
+                console.error('Dashboard Error:', e.data.message);
+            }
+        });
+        
+        // Test endpoints directly
+        async function testEndpoints() {
+            console.log('Testing endpoints...');
+            
+            // Test embedding
+            try {
+                const embedResponse = await fetch('http://localhost:7000/api/test-embed', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        texts: ['Test'],
+                        model: 'norbert2',
+                        pooling_strategy: 'mean'
+                    })
+                });
+                console.log('Embedding endpoint:', embedResponse.ok ? '✅ Working' : '❌ Failed');
+            } catch (e) {
+                console.error('Embedding endpoint error:', e);
+            }
+            
+            // Test reranking
+            try {
+                const rerankResponse = await fetch('http://localhost:7000/api/rerank', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query: 'test',
+                        documents: ['doc1', 'doc2'],
+                        model: 'mmarco-minilm-l12'
+                    })
+                });
+                console.log('Reranking endpoint:', rerankResponse.ok ? '✅ Working' : '❌ Failed');
+            } catch (e) {
+                console.error('Reranking endpoint error:', e);
+            }
+        }
+        
+        // Run tests after page loads
+        setTimeout(testEndpoints, 1000);
+    </script>
+</body>
+</html>

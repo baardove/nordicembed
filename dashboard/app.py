@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
 
-app = FastAPI(title="Norwegian Embeddings Dashboard")
+app = FastAPI(title="Nordic Embeddings Dashboard")
 
 templates = Jinja2Templates(directory="dashboard/templates")
 app.mount("/static", StaticFiles(directory="dashboard/static"), name="static")

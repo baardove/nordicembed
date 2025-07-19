@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  embed-norwegian:
+  embed-nordic:
     build: .
-    image: embed-norwegian:latest
-    container_name: norwegian-embeddings
+    image: embed-nordic:latest
+    container_name: nordic-embeddings
     ports:
       - "7000:7000"
     environment:
@@ -19,6 +19,7 @@ services:
     volumes:
       - ./models:/app/models
       - ./logs:/app/logs
+      - ./config:/app/config
     restart: unless-stopped
     deploy:
       resources:
@@ -28,22 +29,9 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  dashboard:
-    build: 
-      context: .
-      dockerfile: Dockerfile.dashboard
-    image: embed-dashboard:latest
-    container_name: norwegian-embeddings-dashboard
-    ports:
-      - "8080:8080"
-    depends_on:
-      - embed-norwegian
-    environment:
-      - API_URL=http://embed-norwegian:7000
-    restart: unless-stopped

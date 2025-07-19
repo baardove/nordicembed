@@ -214,7 +214,7 @@ curl -X POST http://localhost:7000/api/test-embed \
    - Alternative: `electra-small-nordic` - Fastest option
 
 4. **Multilingual Applications**
-   - First choice: `xlm-roberta-base` - Supports 100+ languages including Norwegian
+   - First choice: `xlm-roberta-base` - Supports 100+ languages including Nordic languages
    - Alternative: `electra-small-nordic` - Nordic languages focus
 
 5. **Domain-Specific Tasks**
@@ -360,6 +360,9 @@ MAX_LENGTH=512              # Maximum token length
 
 # Logging
 LOG_LEVEL=INFO              # DEBUG, INFO, WARNING, ERROR
+
+# Security
+ALLOW_TRUST_REMOTE_CODE=true # Allow models with custom code (required for norbert3)
 ```
 
 ### Reranking Configuration
@@ -399,7 +402,7 @@ MODEL_NAME=xlm-roberta-base
 
 Then restart the service:
 ```bash
-docker-compose restart embed-norwegian
+docker-compose restart embed-nordic
 ```
 
 **Note**: The first time you use a new model, it will be downloaded from HuggingFace (can take several minutes).
@@ -481,9 +484,109 @@ Score query-document pairs for relevance.
 }
 ```
 
+## OpenAI-Compatible API
+
+NoEmbed provides OpenAI-compatible endpoints for easy integration with RAGFlow and other tools.
+
+### Base URL
+```
+http://your-server:7000/v1/
+```
+
+### Available Endpoints
+
+#### List Models
+```bash
+curl http://localhost:7000/v1/models
+```
+
+#### Embeddings
+```bash
+curl -X POST http://localhost:7000/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "norbert2",
+    "input": "Dette er en test"
+  }'
+```
+
+#### Reranking
+```bash
+curl -X POST http://localhost:7000/v1/rerank \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "mmarco-minilm-l12",
+    "query": "Hva er hovedstaden i Norge?",
+    "documents": [
+      "Oslo er hovedstaden i Norge.",
+      "Bergen er Norges nest største by."
+    ],
+    "top_n": 5
+  }'
+```
+
+### RAGFlow Configuration
+
+To use with RAGFlow, set your base URL to:
+```
+http://your-server:7000/v1/
+```
+
+The service will automatically route requests to the appropriate model type (embedding or reranking) based on the model name.
+
+### Common Issues
+
+#### "Model is a reranking model" Error
+If you get an error like `Model 'mmarco-minilm-l12' is a reranking model`, you're using the wrong endpoint:
+- **Embedding models** → Use `/v1/embeddings`
+- **Reranking models** → Use `/v1/rerank`
+
+To check which type a model is:
+```bash
+curl http://localhost:7000/v1/models | jq '.data[] | select(.id=="mmarco-minilm-l12")'
+```
+
+Look for the `type` field: `"type": "reranking"` or `"type": "embedding"`
+
+Or use the helper script:
+```bash
+python check_model_type.py mmarco-minilm-l12
+# Shows: Type: reranking, Use endpoint: POST /v1/rerank
+
+python check_model_type.py norbert2  
+# Shows: Type: embedding, Use endpoint: POST /v1/embeddings
+```
+
 ## RAGFlow Integration
 
-See [ragflow/integration_guide.md](ragflow/integration_guide.md) for detailed RAGFlow integration instructions.
+See [ragflow_config_guide.md](ragflow_config_guide.md) for complete RAGFlow configuration instructions.
+
+### Quick Setup for RAGFlow
+
+#### For Embedding Models (Knowledge Base)
+1. Add OpenAI-Compatible provider with base URL: `http://your-server:7000/v1`
+2. Select embedding model when creating Knowledge Base: `norbert2`, `multilingual-e5-base`, etc.
+
+#### For Reranking Models (Agent Workflow)
+1. Edit `conf/llm_factories.json` to add reranking models (see guide)
+2. Configure with base URL: `http://your-server:7000/rerank`
+3. Restart RAGFlow and select reranker in Agent's Retrieval component
+
+### Supported Models for RAGFlow
+
+✅ **Embedding models** (for Knowledge Base):
+- `norbert2`, `nb-bert-base`, `nb-bert-large` (Norwegian)
+- `kb-bert-swedish`, `bert-large-swedish` (Swedish)  
+- `dabert`, `aelaectra-danish` (Danish)
+- `finbert-base`, `finbert-sbert` (Finnish)
+- `icebert` (Icelandic)
+- `multilingual-e5-base`, `xlm-roberta-base` (Multilingual)
+
+✅ **Reranking models** (for Agent Retrieval):
+- Configure in `llm_factories.json` with `/rerank` endpoint
+- Available: `mmarco-minilm-l12`, `ms-marco-minilm-l6`, etc.
+
+**Error "102"?** You're trying to use a reranking model as an embedding model. See the [configuration guide](ragflow_config_guide.md).
 
 ## Development
 
@@ -510,7 +613,7 @@ python test_models.py
 
 ### Building Docker Image
 ```bash
-docker build -t embed-norwegian .
+docker build -t embed-nordic .
 ```
 
 ## Performance Optimization
@@ -522,7 +625,7 @@ docker build -t embed-norwegian .
 ## Troubleshooting
 
 ### Service won't start
-- Check logs: `docker-compose logs embed-norwegian`
+- Check logs: `docker-compose logs embed-nordic`
 - Ensure port 6000 is not in use
 - Verify model files exist in `./models`
 

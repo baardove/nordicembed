@@ -1,0 +1,47 @@
+{
+  "embedding_models": {
+    "norbert2": {
+      "type": "embedding",
+      "description": "Norwegian BERT v2 - General purpose Norwegian embeddings",
+      "dimensions": 768,
+      "languages": ["no"]
+    },
+    "nb-bert-base": {
+      "type": "embedding", 
+      "description": "Norwegian BERT base by National Library",
+      "dimensions": 768,
+      "languages": ["no"]
+    },
+    "nb-bert-large": {
+      "type": "embedding",
+      "description": "Norwegian BERT large by National Library",
+      "dimensions": 1024,
+      "languages": ["no"]
+    },
+    "multilingual-e5-base": {
+      "type": "embedding",
+      "description": "Multilingual E5 - State-of-the-art multilingual embeddings",
+      "dimensions": 768,
+      "languages": ["multilingual"]
+    }
+  },
+  "reranking_models": {
+    "bge-reranker-base": {
+      "type": "reranking",
+      "description": "BGE Reranker Base - General purpose reranking",
+      "languages": ["multilingual"]
+    },
+    "bge-reranker-large": {
+      "type": "reranking",
+      "description": "BGE Reranker Large - High quality reranking",
+      "languages": ["multilingual"]
+    }
+  },
+  "ragflow_mappings": {
+    "nordic-reranker": "mmarco-minilm-l12",
+    "mmarco-minilm-l12": "mmarco-minilm-l12",
+    "ms-marco-minilm-l6": "ms-marco-minilm-l6",
+    "ms-marco-minilm-l12": "ms-marco-minilm-l12",
+    "jina-reranker-multilingual": "jina-reranker-multilingual"
+  }
+}

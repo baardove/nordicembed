@@ -1,0 +1,39 @@
+{
+  "factory_llm_infos": [
+    {
+      "name": "NoEmbedReranker",
+      "tags": "RE-RANK",
+      "status": "1",
+      "llm": [
+        {
+          "llm_name": "nordic-reranker@noembed",
+          "tags": "RE-RANK",
+          "model_type": "rerank",
+          "base_url": "http://localhost:7000/rerank",
+          "max_tokens": 512
+        },
+        {
+          "llm_name": "mmarco-minilm-l12@noembed",
+          "tags": "RE-RANK",
+          "model_type": "rerank",
+          "base_url": "http://localhost:7000/rerank",
+          "max_tokens": 512
+        },
+        {
+          "llm_name": "ms-marco-minilm-l6@noembed",
+          "tags": "RE-RANK",
+          "model_type": "rerank",
+          "base_url": "http://localhost:7000/rerank",
+          "max_tokens": 512
+        },
+        {
+          "llm_name": "jina-multilingual@noembed",
+          "tags": "RE-RANK",
+          "model_type": "rerank",
+          "base_url": "http://localhost:7000/rerank",
+          "max_tokens": 512
+        }
+      ]
+    }
+  ]
+}

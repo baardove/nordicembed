@@ -9,7 +9,7 @@ venv/
 ENV/
 .venv
 pip-log.txt
-pip-delete-this-directory.txt
+pip-delete-this-directory.txt@
 
 # Models
 models/
@@ -18,7 +18,7 @@ models/
 *.safetensors
 *.h5
 
-# IDE
+# IDE & Claude
 .vscode/
 .idea/
 *.swp
@@ -35,6 +35,9 @@ logs/
 # Environment
 .env
 .env.local
+
+# Models
+models/
 
 # Testing
 .pytest_cache/

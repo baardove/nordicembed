@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for the Norwegian Embedding Service API.
+Test script for the Nordic Embedding Service API.
 """
 import requests
 import json
@@ -163,7 +163,7 @@ def test_error_handling(base_url):
     return True
 
 def main():
-    parser = argparse.ArgumentParser(description="Test Norwegian Embedding Service")
+    parser = argparse.ArgumentParser(description="Test Nordic Embedding Service")
     parser.add_argument(
         "--url",
         default="http://localhost:6000",
@@ -177,7 +177,7 @@ def main():
     
     args = parser.parse_args()
     
-    print(f"Testing Norwegian Embedding Service at: {args.url}")
+    print(f"Testing Nordic Embedding Service at: {args.url}")
     print("=" * 50)
     
     tests = [

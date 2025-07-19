@@ -1,9 +1,9 @@
 #!/bin/bash
-# Examples of using the Norwegian Embedding Service with curl
+# Examples of using the Nordic Embedding Service with curl
 
 API_URL="http://localhost:6000"
 
-echo "=== Norwegian Embedding Service - curl examples ==="
+echo "=== Nordic Embedding Service - curl examples ==="
 echo
 
 # Example 1: Health check

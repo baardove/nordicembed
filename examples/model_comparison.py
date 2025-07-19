@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Compare different Norwegian embedding models.
+Compare different Nordic embedding models.
 This script demonstrates how to switch between models and compare their outputs.
 """
 import requests
@@ -61,7 +61,7 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 
 def compare_models():
     """Compare different models on the same texts."""
-    print("Norwegian Embedding Models Comparison")
+    print("Nordic Embedding Models Comparison")
     print("=" * 80)
     print()
     

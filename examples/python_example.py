@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example of using the Norwegian Embedding Service in Python.
+Example of using the Nordic Embedding Service in Python.
 """
 import requests
 import numpy as np

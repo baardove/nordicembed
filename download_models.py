@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Download Norwegian embedding models for local use.
+Download Nordic embedding models for local use.
 """
 import os
 import sys
@@ -156,7 +156,7 @@ def download_model(model_name: str, base_path: str = "./models"):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Download Norwegian embedding models")
+    parser = argparse.ArgumentParser(description="Download Nordic embedding models")
     parser.add_argument(
         "models",
         nargs="*",
