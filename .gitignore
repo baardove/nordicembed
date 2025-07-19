@@ -36,6 +36,11 @@ logs/
 .env
 .env.local
 
+# Config files with sensitive data
+config/auth.json
+config/api_keys.json
+config/device.json
+
 # Models
 models/
 
