@@ -1,12 +1,13 @@
-# Nordic Embedding Service (NoEmbed)
+# Nordic Embedding Service (NordicEmbed)
 
-A comprehensive embedding service supporting all Nordic languages - Norwegian, Swedish, Danish, Finnish, and Icelandic - plus multilingual models for use with RAGFlow and other applications.
+A comprehensive embedding service running as docker container with a web dashboard for easy overview, stats and maintaince. The service supports all Nordic languages - Norwegian, Swedish, Danish, Finnish, and Icelandic - plus multilingual models for use with RAGFlow and other applications (not tested).
 
 ## Features
 
 - ✅ Support for 23 Nordic embedding models (Norwegian, Swedish, Danish, Finnish, Icelandic)
 - ✅ Complete coverage of all Nordic languages
 - ✅ Multilingual models for cross-language tasks
+- ✅ Autodownloading models from Huggingface
 - ✅ REST API, OpenAI-compatible and compatible with RAGFlow 
 - ✅ Docker containerization for easy deployment
 - ✅ Web dashboard for configuration and testing
@@ -17,19 +18,56 @@ A comprehensive embedding service supporting all Nordic languages - Norwegian, S
 - ✅ **Dynamic model loading** - Models are automatically downloaded on first use
 - ✅ **No pre-download required** - Start using any model immediately
 - ✅ **Cross-encoder reranking** - Improve search results with neural reranking
-- ✅ **5 reranking models** - Including multilingual support for Nordic languages
+- ✅ **5 reranking models** - Including multilingual support for Nordic languages (need more work for Ragflow compability)
+
+
+## Embedding Models
+
+![Embedded models](images/embed_models.png)
+
+
+## Rerank Models
+
+![Rerank models](images/rerank_models.png)
+(The rerank models are not fully tested in ragflow)
+
 
 ## Quick Start
+
 
 ### 1. Clone the repository
 ```bash
 git clone <repository-url>
-cd NoEmbed
+cd nordicembed
 ```
+
+### 2. Create docker container
+```bash
+./rebuild.sh
+```
+
+The service should now be running, go to the dashboard at:
+http://<your servers ip>:7000/
+
+NB! Add password and api-key(s) from dashboard if your server is public accessible
+
+
+
+## Detailed Manual Start (optional)
+
+
+### 1. Clone the repository
+```bash
+git clone <repository-url>
+cd nordicembed
+```
+
+
 
 ### 2. Download models (optional - will auto-download on first use)
 
-**Note: Models are automatically downloaded on first use!** You don't need to pre-download models unless you want to prepare them in advance.
+**Note: Models are automatically downloaded on first use!** 
+You don't need to pre-download models unless you want to prepare them in advance.
 
 ```bash
 # Download all models (requires ~15GB disk space for all 23 models)
@@ -50,6 +88,7 @@ python download_models.py electra-small-nordic
 - **Cached locally**: Once downloaded, models are cached in the `./models` directory for instant loading
 - **No restart needed**: New models are loaded dynamically without restarting the service
 
+
 ### 3. Start with Docker Compose
 ```bash
 # Copy environment file
@@ -61,12 +100,14 @@ docker-compose up -d
 
 The embedding service will be available at `http://localhost:7000` and the dashboard at `http://localhost:7080`.
 
+
 ### 4. Test the service
 ```bash
 curl -X POST http://localhost:7000/embed \
   -H "Content-Type: application/json" \
   -d '{"texts": ["Dette er en test av den norske embedding-tjenesten."]}'
 ```
+
 
 ## Model Implementation Status
 
@@ -626,7 +667,7 @@ docker build -t embed-nordic .
 
 ### Service won't start
 - Check logs: `docker-compose logs embed-nordic`
-- Ensure port 6000 is not in use
+- Ensure port 7000 is not in use
 - Verify model files exist in `./models`
 
 ### Out of memory errors
