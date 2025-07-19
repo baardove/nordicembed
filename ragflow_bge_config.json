@@ -1,0 +1,27 @@
+{
+  "factory_llm_infos": [
+    {
+      "name": "BAAI",
+      "tags": "RE-RANK",
+      "status": "1",
+      "llm": [
+        {
+          "llm_name": "bge-reranker-base",
+          "tags": "RE-RANK",
+          "model_type": "rerank",
+          "base_url": "http://mini.local:7000",
+          "max_tokens": 512,
+          "api_key": "EMPTY"
+        },
+        {
+          "llm_name": "bge-reranker-large",
+          "tags": "RE-RANK",
+          "model_type": "rerank",
+          "base_url": "http://mini.local:7000",
+          "max_tokens": 512,
+          "api_key": "EMPTY"
+        }
+      ]
+    }
+  ]
+}

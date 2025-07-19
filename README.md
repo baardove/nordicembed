@@ -426,108 +426,10 @@ RERANK_BATCH_SIZE=32        # Maximum documents per reranking request
 - `jina-reranker-multilingual` - Modern multilingual reranker
 - `nordic-reranker` - Alias for mmarco-minilm-l12, optimized naming
 
-### Changing Models
-
-To use a different model, update the `MODEL_NAME` in your `.env` file:
-
-```env
-# For semantic search
-MODEL_NAME=simcse-nb-bert-large
-
-# For fast inference
-MODEL_NAME=electra-small-nordic
-
-# For multilingual support
-MODEL_NAME=xlm-roberta-base
-```
-
-Then restart the service:
-```bash
-docker-compose restart embed-nordic
-```
-
-**Note**: The first time you use a new model, it will be downloaded from HuggingFace (can take several minutes).
-
-## API Documentation
-
-### POST /embed
-Generate embeddings for text.
-
-**Request:**
-```json
-{
-  "texts": ["Text 1", "Text 2", "..."]
-}
-```
-
-**Response:**
-```json
-{
-  "embeddings": [[0.1, 0.2, ...], [0.3, 0.4, ...], ...]
-}
-```
-
-### GET /health
-Check service health.
-
-### GET /
-Get service information.
-
-### POST /api/rerank
-Rerank documents based on query relevance using cross-encoder models.
-
-**Request:**
-```json
-{
-  "query": "Search query",
-  "documents": ["Document 1", "Document 2", "..."],
-  "model": "mmarco-minilm-l12",  // optional, defaults to mmarco-minilm-l12
-  "top_k": 5  // optional, return only top K results
-}
-```
-
-**Response:**
-```json
-{
-  "results": [
-    {
-      "index": 0,         // original document index
-      "score": 0.9876,    // relevance score
-      "document": "Document text..."
-    },
-    // ... more results
-  ],
-  "model": "mmarco-minilm-l12",
-  "query_length": 25,
-  "documents_count": 10
-}
-```
-
-### POST /api/score-pairs
-Score query-document pairs for relevance.
-
-**Request:**
-```json
-{
-  "pairs": [
-    ["query 1", "document 1"],
-    ["query 2", "document 2"]
-  ],
-  "model": "mmarco-minilm-l12"  // optional
-}
-```
-
-**Response:**
-```json
-{
-  "scores": [0.9876, 0.5432],
-  "model": "mmarco-minilm-l12"
-}
-```
 
 ## OpenAI-Compatible API
 
-NoEmbed provides OpenAI-compatible endpoints for easy integration with RAGFlow and other tools.
+NordicEmbed provides OpenAI-compatible endpoints for easy integration with RAGFlow and other tools.
 
 ### Base URL
 ```
@@ -628,6 +530,89 @@ See [ragflow_config_guide.md](ragflow_config_guide.md) for complete RAGFlow conf
 - Available: `mmarco-minilm-l12`, `ms-marco-minilm-l6`, etc.
 
 **Error "102"?** You're trying to use a reranking model as an embedding model. See the [configuration guide](ragflow_config_guide.md).
+
+
+
+## API Documentation
+
+Usage
+
+### POST /embed
+Generate embeddings for text.
+
+**Request:**
+```json
+{
+  "texts": ["Text 1", "Text 2", "..."]
+}
+```
+
+**Response:**
+```json
+{
+  "embeddings": [[0.1, 0.2, ...], [0.3, 0.4, ...], ...]
+}
+```
+
+### GET /health
+Check service health.
+
+### GET /
+Get service information.
+
+### POST /api/rerank
+Rerank documents based on query relevance using cross-encoder models.
+
+**Request:**
+```json
+{
+  "query": "Search query",
+  "documents": ["Document 1", "Document 2", "..."],
+  "model": "mmarco-minilm-l12",  // optional, defaults to mmarco-minilm-l12
+  "top_k": 5  // optional, return only top K results
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "index": 0,         // original document index
+      "score": 0.9876,    // relevance score
+      "document": "Document text..."
+    },
+    // ... more results
+  ],
+  "model": "mmarco-minilm-l12",
+  "query_length": 25,
+  "documents_count": 10
+}
+```
+
+### POST /api/score-pairs
+Score query-document pairs for relevance.
+
+**Request:**
+```json
+{
+  "pairs": [
+    ["query 1", "document 1"],
+    ["query 2", "document 2"]
+  ],
+  "model": "mmarco-minilm-l12"  // optional
+}
+```
+
+**Response:**
+```json
+{
+  "scores": [0.9876, 0.5432],
+  "model": "mmarco-minilm-l12"
+}
+```
+
+
 
 
 ## Development

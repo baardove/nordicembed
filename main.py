@@ -28,6 +28,11 @@ from ragflow_adapter import (
     RAGFlowRerankRequest,
     RAGFlowRerankResponse
 )
+from ragflow_bge_compat import (
+    BGECompatRequest,
+    BGECompatResponse,
+    map_bge_to_noembed_model
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -964,6 +969,62 @@ async def ragflow_rerank_endpoint(request: RAGFlowRerankRequest):
         logger.error(f"Error in RAGFlow reranking: {str(e)}")
         metrics.total_errors += 1
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/models/{model_name}/rerank", response_model=BGECompatResponse)
+async def bge_compatible_rerank(model_name: str, request: BGECompatRequest):
+    """BGE-compatible reranking endpoint for RAGFlow"""
+    logger.info(f"Received BGE-style rerank request for model: {model_name}")
+    
+    # Map BGE model name to NoEmbed model
+    noembed_model = map_bge_to_noembed_model(model_name)
+    logger.info(f"Mapped {model_name} to {noembed_model}")
+    
+    try:
+        start_time = time.time()
+        
+        # Create reranker service
+        reranker = RerankerService(
+            model_name=noembed_model,
+            model_path=settings.model_path,
+            device=settings.device,
+            max_length=settings.max_length
+        )
+        
+        # Score each passage against the query
+        scores = reranker.score_pairs([(request.query, passage) for passage in request.passages])
+        
+        # Normalize scores if requested (0-1 range)
+        if request.normalize:
+            min_score = min(scores) if scores else 0
+            max_score = max(scores) if scores else 1
+            score_range = max_score - min_score
+            if score_range > 0:
+                scores = [(s - min_score) / score_range for s in scores]
+            else:
+                scores = [0.5 for _ in scores]
+        
+        response_time = time.time() - start_time
+        logger.info(f"Reranked {len(request.passages)} passages in {response_time:.3f}s")
+        
+        # Track metrics
+        metrics.track_request(f"/models/{model_name}/rerank", len(request.passages), response_time, model=noembed_model)
+        
+        # Clean up
+        del reranker
+        
+        return BGECompatResponse(scores=scores)
+        
+    except Exception as e:
+        logger.error(f"Error in BGE-compatible reranking: {str(e)}")
+        metrics.total_errors += 1
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict", response_model=BGECompatResponse)
+async def bge_predict_endpoint(request: BGECompatRequest):
+    """Alternative BGE-compatible endpoint that some versions of RAGFlow might use"""
+    return await bge_compatible_rerank("bge-reranker-base", request)
 
 
 @app.post("/api/update-device")
